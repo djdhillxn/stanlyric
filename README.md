@@ -38,7 +38,9 @@ stanlyric/
 │   ├── prepare_corpus.py
 │   ├── build_index.py
 │   ├── search.py
-│   └── evaluate.py
+│   ├── evaluate.py
+│   ├── export_stanlyric_web.py
+│   └── export_song_metadata.py
 ├── src/stanlyric/
 │   ├── bm25.py
 │   ├── data.py
@@ -146,6 +148,41 @@ python scripts/evaluate.py \
 ```
 
 Evaluation artifacts are saved to `outputs/evaluation/`.
+
+## Portfolio exports
+
+`export_stanlyric_web.py` builds the static BM25 artifact used by a browser-based
+portfolio app:
+
+```bash
+python scripts/export_stanlyric_web.py \
+  --corpus data/processed/corpus.parquet \
+  --output assets/json/stanlyric/stanlyric_web_index.json
+```
+
+The output name always states whether lyric text is present:
+
+- `stanlyric_web_index_without_lyrics.json` by default
+- `stanlyric_web_index_with_lyrics.json` with `--include-full-lyrics`
+
+The browser app should load the matching explicit filename. Evaluation metrics can
+optionally be exported with `--metrics` and `--metrics-output`.
+
+Export the separate song metadata lookup with:
+
+```bash
+python scripts/export_song_metadata.py \
+  --corpus data/processed/corpus.parquet \
+  --source-data data/raw/Lyrics_MIDI_Dataset_Processed_Corpus_CC_BY_NC_SA.pickle \
+  --output assets/json/stanlyric/song_metadata.json
+```
+
+Each search document includes a `metadata_key`. Use it to read
+`song_metadata.json["songs"][metadata_key]`. The lookup currently contains title,
+artist, source ID, document ID, and available lyric keywords. The stable source ID
+is preferred; `doc_id` is used only when a source ID is unavailable. Album, year,
+artwork, playlist membership, and external service IDs can be added later without
+rebuilding the BM25 artifact.
 
 ## Notebook workflow
 
