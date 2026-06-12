@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 
-from stanlyric.hf_download import (
+from src.hf_download import (
     DEFAULT_REPO_ID,
     auto_download_best_candidate,
     candidates_to_dataframe,

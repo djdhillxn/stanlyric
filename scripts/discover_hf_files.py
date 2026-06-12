@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from stanlyric.hf_download import DEFAULT_REPO_ID, candidates_to_dataframe, rank_lyric_files
+from src.hf_download import DEFAULT_REPO_ID, candidates_to_dataframe, rank_lyric_files
 
 
 def parse_args():

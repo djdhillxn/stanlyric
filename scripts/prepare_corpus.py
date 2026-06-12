@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 
-from stanlyric.data import CorpusConfig, load_raw_dataset, prepare_corpus, save_corpus
+from src.data import CorpusConfig, load_raw_dataset, prepare_corpus, save_corpus
 
 
 def parse_args():

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 
-from stanlyric.search import StanLyricSearchEngine
+from src.search import StanLyricSearchEngine
 
 
 def parse_args():

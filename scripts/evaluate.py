@@ -6,9 +6,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from stanlyric.evaluation import EvalConfig, RetrievalEvaluator
-from stanlyric.search import StanLyricSearchEngine
-from stanlyric.visualization import plot_metric_summary, plot_rank_distribution
+from src.evaluation import EvalConfig, RetrievalEvaluator
+from src.search import StanLyricSearchEngine
+from src.visualization import plot_metric_summary, plot_rank_distribution
 
 
 def parse_args():

@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import argparse
 
-from stanlyric.bm25 import BM25Config
-from stanlyric.search import StanLyricSearchEngine
+from src.bm25 import BM25Config
+from src.search import StanLyricSearchEngine
 
 
 def parse_args():
