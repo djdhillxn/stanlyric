@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 
-from stanlyric.search import StanLyricSearchEngine
-from stanlyric.text import tokenize
+from src.search import StanLyricSearchEngine
+from src.text import tokenize
 
 
 @dataclass

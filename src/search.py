@@ -12,9 +12,9 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 
-from stanlyric.bm25 import BM25Config, BM25Okapi
-from stanlyric.data import load_corpus
-from stanlyric.text import normalize_text, tokenize, unique_preserve_order
+from src.bm25 import BM25Config, BM25Okapi
+from src.data import load_corpus
+from src.text import normalize_text, tokenize, unique_preserve_order
 
 
 @dataclass
