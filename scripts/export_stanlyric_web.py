@@ -123,7 +123,7 @@ def to_records(
     corpus["source"] = df[source_col].fillna("").astype(str) if source_col else ""
     corpus["lyrics_char_len"] = corpus["lyrics"].str.len()
     corpus = corpus[corpus["lyrics_char_len"] >= min_lyric_chars].copy()
-    corpus = corpus.drop_duplicates(subset=["lyrics"]).reset_index(drop=True)
+    corpus = corpus.reset_index(drop=True)
     if max_docs is not None:
         corpus = corpus.head(max_docs).copy()
     corpus["doc_id"] = [f"song_{i:07d}" for i in range(len(corpus))]

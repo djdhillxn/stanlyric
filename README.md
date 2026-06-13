@@ -13,7 +13,8 @@ portfolio site.
 
 - Discovers and selectively downloads likely lyric files from Hugging Face.
 - Reads CSV, JSONL, JSON, Parquet, Pickle, and directories of lyric text files.
-- Normalizes and deduplicates lyrics into a canonical Parquet corpus.
+- Normalizes raw lyrics, audits duplicate song identities, and writes a clean canonical
+  Parquet corpus.
 - Builds a self-contained BM25-Okapi index.
 - Returns ranked songs, matched terms, snippets, scores, and source information.
 - Evaluates retrieval with synthetic lyric fragments and standard ranking metrics.
@@ -79,15 +80,15 @@ latest code.
 The included sample exercises corpus preparation, indexing, and search:
 
 ```bash
-python scripts/prepare_corpus.py \
+python -m scripts.prepare_corpus \
   --input data/sample_lyrics.csv \
   --output data/processed/sample_corpus.parquet
 
-python scripts/build_index.py \
+python -m scripts.build_index \
   --corpus data/processed/sample_corpus.parquet \
   --output data/processed/sample_bm25.pkl
 
-python scripts/search.py \
+python -m scripts.search \
   --index data/processed/sample_bm25.pkl \
   --query "one shot one opportunity seize everything" \
   --top-k 3
@@ -99,40 +100,65 @@ The Lyrics-MIDI repository is large, so begin by inspecting likely lyric files
 instead of downloading the complete repository:
 
 ```bash
-python scripts/discover_hf_files.py --top 25
-python scripts/download_data.py --dry-run
+python -m scripts.discover_hf_files --top 25
+python -m scripts.download_data --dry-run
 ```
 
 Download the highest-ranked candidate, or select a file reported by the dry run:
 
 ```bash
-python scripts/download_data.py
+python -m scripts.download_data
 
-python scripts/download_data.py \
+python -m scripts.download_data \
   --filename "PATH/SHOWN/BY/DRY_RUN.parquet"
 ```
 
 Prepare the canonical corpus and build the index:
 
 ```bash
-python scripts/prepare_corpus.py \
+python -m scripts.prepare_corpus \
   --input data/raw/YOUR_DOWNLOADED_FILE \
   --output data/processed/corpus.parquet
 
-python scripts/build_index.py \
+python -m scripts.build_index \
   --corpus data/processed/corpus.parquet \
   --output data/processed/stanlyric_bm25.pkl
+```
+
+Corpus preparation is deliberately split into two stages. `prepare_corpus`
+normalizes the source into the six-column StanLyric schema without hiding duplicate
+records. `clean_corpus` then:
+
+- removes blank/unknown artists and blank titles;
+- collapses exact lyric copies using the most credible artist/title label;
+- groups case-, punctuation-, and accent-normalized artist-title identities;
+- keeps the most complete, least malformed transcription in each identity group;
+- preserves explicitly named live, remix, acoustic, demo, and similar versions.
+
+For the current Lyrics-MIDI source file, this reduces 47,474 prepared rows to
+36,545 clean song documents. The CLI prints an audit report for every removal
+category before saving `corpus.parquet`.
+
+The cleaning policy can be relaxed for experiments:
+
+```bash
+python -m scripts.prepare_corpus \
+  --input data/raw/YOUR_DOWNLOADED_FILE \
+  --keep-unknown-artists \
+  --keep-missing-titles \
+  --no-exact-lyric-deduplication \
+  --no-song-identity-deduplication
 ```
 
 Search and evaluate it:
 
 ```bash
-python scripts/search.py \
+python -m scripts.search \
   --index data/processed/stanlyric_bm25.pkl \
   --query "look if you had one shot or one opportunity" \
   --top-k 10
 
-python scripts/evaluate.py \
+python -m scripts.evaluate \
   --index data/processed/stanlyric_bm25.pkl \
   --n-queries 500 \
   --top-k 10
@@ -143,8 +169,9 @@ Evaluation tables and plots are written to `outputs/evaluation/`.
 ## Notebook Workflow
 
 Open `notebooks/01_bm25_song_identifier.ipynb` from the repository root. It walks
-through dataset discovery, selective download, corpus preparation, index building,
-search explanation, visualization, and synthetic evaluation.
+through dataset discovery, selective download, corpus preparation, an explicit
+deduplication audit, index building, search explanation, visualization, and
+synthetic evaluation.
 
 Search results include:
 
@@ -175,7 +202,7 @@ entirely in the browser, with no search server.
 Export the recommended metadata-only version:
 
 ```bash
-python scripts/export_stanlyric_web.py \
+python -m scripts.export_stanlyric_web \
   --corpus data/processed/corpus.parquet \
   --output data/processed/stanlyric_web_index.json
 ```
@@ -189,7 +216,7 @@ The exporter makes the content mode explicit in the final filename:
 To generate the local full-lyrics version:
 
 ```bash
-python scripts/export_stanlyric_web.py \
+python -m scripts.export_stanlyric_web \
   --corpus data/processed/corpus.parquet \
   --output data/processed/stanlyric_web_index.json \
   --include-full-lyrics
@@ -213,7 +240,7 @@ your-github-io/
 Export directly into the portfolio repository:
 
 ```bash
-python scripts/export_stanlyric_web.py \
+python -m scripts.export_stanlyric_web \
   --corpus data/processed/corpus.parquet \
   --output /path/to/your-github-io/assets/json/stanlyric/stanlyric_web_index.json \
   --metrics outputs/evaluation/metrics.csv \
@@ -252,7 +279,7 @@ search structures and essential result metadata, but not lyric text. Use the
 lyrics are needed.
 
 The source dataset is the
-[Lyrics-MIDI-Dataset](https://huggingface.co/datasets/amaai-lab/Lyrics-MIDI-Dataset),
+[Lyrics-MIDI-Dataset](https://huggingface.co/datasets/asigalov61/Lyrics-MIDI-Dataset),
 listed as CC BY-NC-SA 4.0. Review dataset and lyric redistribution terms before
 publishing generated artifacts.
 
