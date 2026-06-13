@@ -1,76 +1,82 @@
 # StanLyric
 
-**StanLyric** is an offline-first lyric fragment search and song identification project.
+**StanLyric** is an offline-first lyric fragment search and song identification
+project. Give it a remembered line, even an incomplete one, and it ranks the most
+likely songs with BM25.
 
-The v1 goal is simple:
+The project follows the full retrieval story: selectively download lyric data,
+prepare a canonical corpus, build and evaluate an index, search from Python or a
+notebook, and export the same search engine as a static browser artifact for a
+portfolio site.
 
-> Type a few lyric lines or a partial remembered lyric, and StanLyric retrieves the most likely songs using BM25.
+## What It Does
 
-The project is intentionally separate from the Spotify dashboard. Later, it can become the lyrics intelligence module behind Spotify-based playlist insights and lyric-aware recommendations.
+- Discovers and selectively downloads likely lyric files from Hugging Face.
+- Reads CSV, JSONL, JSON, Parquet, Pickle, and directories of lyric text files.
+- Normalizes and deduplicates lyrics into a canonical Parquet corpus.
+- Builds a self-contained BM25-Okapi index.
+- Returns ranked songs, matched terms, snippets, scores, and source information.
+- Evaluates retrieval with synthetic lyric fragments and standard ranking metrics.
+- Exports a static JSON index that runs entirely in the browser.
+- Supports public metadata-only and local full-lyrics export modes.
 
-## Current scope: v1 BM25 song identifier
-
-StanLyric currently supports:
-
-- selective Hugging Face dataset discovery and download, avoiding MIDI/audio/huge ZIP files by default;
-- corpus preparation from CSV, JSONL, JSON, Parquet, Pickle, or directories of `.txt` lyric files;
-- a self-contained BM25-Okapi implementation;
-- top-k lyric fragment search;
-- result snippets, matched terms, confidence-like scores, and source metadata;
-- offline full-lyrics access for development notebooks;
-- synthetic IR evaluation with Hit@1, Hit@3, Hit@5, Hit@10, MRR@10, NDCG@10, Recall@10, and miss rate;
-- notebook-friendly visualizations for score gaps, metric summaries, and rank distributions.
-
-## Repository layout
+## Repository Layout
 
 ```text
 stanlyric/
-├── data/
-│   ├── raw/                    # downloaded HF files, ignored by git
-│   ├── processed/              # corpus.parquet and BM25 index, ignored by git
-│   └── sample_lyrics.csv        # tiny smoke-test sample
-├── notebooks/
-│   └── 01_bm25_song_identifier.ipynb
-├── outputs/                    # evaluation plots/results, ignored by git
-├── scripts/
-│   ├── discover_hf_files.py
-│   ├── download_data.py
-│   ├── prepare_corpus.py
-│   ├── build_index.py
-│   ├── search.py
-│   ├── evaluate.py
-│   ├── export_stanlyric_web.py
-│   └── export_song_metadata.py
-├── src/stanlyric/
-│   ├── bm25.py
-│   ├── data.py
-│   ├── evaluation.py
-│   ├── hf_download.py
-│   ├── search.py
-│   ├── text.py
-│   └── visualization.py
-├── tests/
-├── pyproject.toml
-├── requirements.txt
-└── README.md
+|-- assets/
+|   `-- json/stanlyric/             # portfolio-ready web index copies
+|-- data/
+|   |-- raw/                        # downloaded source data
+|   |-- processed/
+|   |   |-- corpus.parquet
+|   |   |-- stanlyric_bm25.pkl
+|   |   |-- stanlyric_web_index_without_lyrics.json
+|   |   `-- stanlyric_web_index_with_lyrics.json
+|   `-- sample_lyrics.csv           # tiny smoke-test corpus
+|-- notebooks/
+|   `-- 01_bm25_song_identifier.ipynb
+|-- outputs/evaluation/             # evaluation tables and plots
+|-- scripts/
+|   |-- discover_hf_files.py
+|   |-- download_data.py
+|   |-- prepare_corpus.py
+|   |-- build_index.py
+|   |-- search.py
+|   |-- evaluate.py
+|   `-- export_stanlyric_web.py
+|-- src/
+|   |-- bm25.py
+|   |-- data.py
+|   |-- evaluation.py
+|   |-- hf_download.py
+|   |-- search.py
+|   |-- text.py
+|   `-- visualization.py
+|-- tests/
+|-- pyproject.toml
+|-- requirements.txt
+`-- README.md
 ```
 
 ## Setup
+
+Run commands from the repository root so the scripts and notebook resolve the
+local `src` modules directly:
 
 ```bash
 cd stanlyric
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e .
+python -m pip install -r requirements.txt
 ```
 
-For Colab, upload or clone the repo, then run:
+Restart the notebook kernel after changing source modules so imports reflect the
+latest code.
 
-```python
-!pip install -e .
-```
+## Quick Smoke Test
 
-## Quick smoke test with the included tiny sample
+The included sample exercises corpus preparation, indexing, and search:
 
 ```bash
 python scripts/prepare_corpus.py \
@@ -87,165 +93,172 @@ python scripts/search.py \
   --top-k 3
 ```
 
-## Main workflow with the Hugging Face dataset
+## Main Workflow
 
-The linked Lyrics-MIDI dataset is large, so do not blindly download the entire repo or the main archive. First inspect likely lyric files:
+The Lyrics-MIDI repository is large, so begin by inspecting likely lyric files
+instead of downloading the complete repository:
 
 ```bash
 python scripts/discover_hf_files.py --top 25
-```
-
-Then dry-run the downloader:
-
-```bash
 python scripts/download_data.py --dry-run
 ```
 
-Download the top-ranked candidate:
+Download the highest-ranked candidate, or select a file reported by the dry run:
 
 ```bash
 python scripts/download_data.py
+
+python scripts/download_data.py \
+  --filename "PATH/SHOWN/BY/DRY_RUN.parquet"
 ```
 
-Or download a specific candidate shown by the dry run:
-
-```bash
-python scripts/download_data.py --filename "PATH/SHOWN/BY/DRY_RUN.parquet"
-```
-
-Prepare the canonical corpus:
+Prepare the canonical corpus and build the index:
 
 ```bash
 python scripts/prepare_corpus.py \
   --input data/raw/YOUR_DOWNLOADED_FILE \
   --output data/processed/corpus.parquet
-```
 
-Build the BM25 index:
-
-```bash
 python scripts/build_index.py \
   --corpus data/processed/corpus.parquet \
   --output data/processed/stanlyric_bm25.pkl
 ```
 
-Search:
+Search and evaluate it:
 
 ```bash
 python scripts/search.py \
   --index data/processed/stanlyric_bm25.pkl \
   --query "look if you had one shot or one opportunity" \
   --top-k 10
-```
 
-Evaluate:
-
-```bash
 python scripts/evaluate.py \
   --index data/processed/stanlyric_bm25.pkl \
   --n-queries 500 \
   --top-k 10
 ```
 
-Evaluation artifacts are saved to `outputs/evaluation/`.
+Evaluation tables and plots are written to `outputs/evaluation/`.
 
-## Portfolio exports
+## Notebook Workflow
 
-`export_stanlyric_web.py` builds the static BM25 artifact used by a browser-based
-portfolio app:
+Open `notebooks/01_bm25_song_identifier.ipynb` from the repository root. It walks
+through dataset discovery, selective download, corpus preparation, index building,
+search explanation, visualization, and synthetic evaluation.
+
+Search results include:
+
+- rank, document ID, title, and artist;
+- BM25 score and corpus score percentile;
+- matched terms and a lyric snippet;
+- source and retrieval method;
+- full lyrics when explicitly requested.
+
+The reported `confidence` is a top-k relative softmax score. It is useful for
+comparing candidates for one query, but it is not a calibrated probability.
+
+## Evaluation
+
+StanLyric samples fragments from known songs, hides the source song ID, retrieves
+the top candidates, and measures where the original song reappears.
+
+The evaluation reports Hit@1, Hit@3, Hit@5, Hit@10, Recall@10, MRR@10, NDCG@10,
+median found rank, and miss rate. In this one-relevant-song setup, Recall@10 and
+Hit@10 are equivalent.
+
+## Browser Portfolio Export
+
+`export_stanlyric_web.py` packages the corpus and BM25 structures into a static
+JSON artifact. A portfolio page can fetch that file and run lyric-fragment search
+entirely in the browser, with no search server.
+
+Export the recommended metadata-only version:
 
 ```bash
 python scripts/export_stanlyric_web.py \
   --corpus data/processed/corpus.parquet \
-  --output assets/json/stanlyric/stanlyric_web_index.json
+  --output data/processed/stanlyric_web_index.json
 ```
 
-The output name always states whether lyric text is present:
+The exporter makes the content mode explicit in the final filename:
 
-- `stanlyric_web_index_without_lyrics.json` by default
-- `stanlyric_web_index_with_lyrics.json` with `--include-full-lyrics`
+- `stanlyric_web_index_without_lyrics.json` is the default.
+- `stanlyric_web_index_with_lyrics.json` is produced with
+  `--include-full-lyrics`.
 
-The browser app should load the matching explicit filename. Evaluation metrics can
-optionally be exported with `--metrics` and `--metrics-output`.
-
-Export the separate song metadata lookup with:
+To generate the local full-lyrics version:
 
 ```bash
-python scripts/export_song_metadata.py \
+python scripts/export_stanlyric_web.py \
   --corpus data/processed/corpus.parquet \
-  --source-data data/raw/Lyrics_MIDI_Dataset_Processed_Corpus_CC_BY_NC_SA.pickle \
-  --output assets/json/stanlyric/song_metadata.json
+  --output data/processed/stanlyric_web_index.json \
+  --include-full-lyrics
 ```
 
-Each search document includes a `metadata_key`. Use it to read
-`song_metadata.json["songs"][metadata_key]`. The lookup currently contains title,
-artist, source ID, document ID, and available lyric keywords. The stable source ID
-is preferred; `doc_id` is used only when a source ID is unavailable. Album, year,
-artwork, playlist membership, and external service IDs can be added later without
-rebuilding the BM25 artifact.
+### GitHub Pages Integration
 
-## Notebook workflow
-
-Open:
+The portfolio can keep its page, styling, search code, and exported data separated:
 
 ```text
-notebooks/01_bm25_song_identifier.ipynb
+your-github-io/
+|-- _projects/stanlyric.md
+`-- assets/
+    |-- css/stanlyric/stanlyric.css
+    |-- js/stanlyric/stanlyric.js
+    `-- json/stanlyric/
+        |-- stanlyric_web_index_without_lyrics.json
+        `-- stanlyric_eval_metrics.json          # optional
 ```
 
-The notebook walks through:
+Export directly into the portfolio repository:
 
-1. Hugging Face file inspection;
-2. selective download;
-3. corpus preparation;
-4. BM25 index building;
-5. lyric-fragment search;
-6. result explanation;
-7. score visualization;
-8. synthetic benchmark evaluation.
+```bash
+python scripts/export_stanlyric_web.py \
+  --corpus data/processed/corpus.parquet \
+  --output /path/to/your-github-io/assets/json/stanlyric/stanlyric_web_index.json \
+  --metrics outputs/evaluation/metrics.csv \
+  --metrics-output /path/to/your-github-io/assets/json/stanlyric/stanlyric_eval_metrics.json
+```
 
-## Result fields
+The metrics arguments are optional, and the exporter accepts metrics stored as
+CSV, JSON, or Parquet. The portfolio JavaScript must fetch the explicit generated
+filename, normally:
 
-Search returns a DataFrame with columns like:
+```text
+assets/json/stanlyric/stanlyric_web_index_without_lyrics.json
+```
 
-- `rank`
-- `doc_id`
-- `title`
-- `artist`
-- `bm25_score`
-- `confidence`
-- `score_percentile`
-- `matched_terms`
-- `snippet`
-- `method`
-- `source`
-- `full_lyrics`, only if `include_full_lyrics=True`
+The browser UI can use the artifact to show the top candidate, ranked result
+cards, BM25 scores, relative confidence, corpus percentile, first-to-second score
+gap, matched and missing terms, per-term BM25 contributions, a score chart, and
+optional offline metrics. Snippets and collapsible lyrics require the
+`with_lyrics` artifact.
 
-`confidence` is not a calibrated probability. It is a top-k relative softmax score useful for comparing retrieved candidates for one query.
+For a Jekyll portfolio, verify the integration locally:
 
-## Evaluation metrics
+```bash
+bundle exec jekyll serve
+```
 
-StanLyric v1 uses synthetic retrieval evaluation:
+Then open `/projects/stanlyric/`. A small synthetic fallback artifact can be useful
+during portfolio development, but it is optional and separate from StanLyric's
+generated data.
 
-1. sample lyric fragments from known songs;
-2. hide the source song ID;
-3. retrieve top-k songs;
-4. check whether the original song appears in the result list.
+## Export Modes
 
-Metrics:
+Use the `without_lyrics` artifact for a compact public portfolio: it contains the
+search structures and essential result metadata, but not lyric text. Use the
+`with_lyrics` artifact for local or private development when snippets and full
+lyrics are needed.
 
-- **Hit@1**: fraction of queries where the correct song is rank 1.
-- **Hit@5 / Hit@10**: fraction where the correct song appears in top 5 / top 10.
-- **MRR@10**: average reciprocal rank of the correct song within top 10.
-- **NDCG@10**: ranking-quality metric; with one known relevant song, higher means the target appears closer to rank 1.
-- **Recall@10**: same as Hit@10 in this one-target setup.
+The source dataset is the
+[Lyrics-MIDI-Dataset](https://huggingface.co/datasets/amaai-lab/Lyrics-MIDI-Dataset),
+listed as CC BY-NC-SA 4.0. Review dataset and lyric redistribution terms before
+publishing generated artifacts.
 
-## Development note on full lyrics
+## Planned Improvements
 
-The notebook can keep full lyrics in variables for offline development and debugging. For any future public portfolio demo, prefer showing short matched snippets and metadata rather than publishing full lyric text.
-
-## Planned v2 upgrades
-
-- character n-gram TF-IDF for typo-heavy or misremembered lyric fragments;
-- dense sentence-transformer retrieval using the dataset's existing embeddings;
-- BM25 + dense hybrid reranking;
-- Spotify playlist bridge: recommend songs absent from a playlist but lyrically similar to the user's liked tracks.
+- Character n-gram TF-IDF for typo-heavy or misremembered fragments.
+- Dense sentence-transformer retrieval using available embeddings.
+- BM25 and dense hybrid reranking.
+- A Spotify bridge for lyric-aware recommendations beyond an existing playlist.

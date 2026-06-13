@@ -246,10 +246,8 @@ def main() -> None:
     docs = []
     for _, row in corpus.iterrows():
         source_id = str(row.get("source", "") or "")
-        metadata_key = source_id or str(row["doc_id"])
         doc = {
             "doc_id": row["doc_id"],
-            "metadata_key": metadata_key,
             "title": row.get("title", ""),
             "artist": row.get("artist", ""),
             "source": source_id,
@@ -268,7 +266,6 @@ def main() -> None:
             "vocabulary_size": index["metadata"]["vocabulary_size"],
             "avgdl": index["metadata"]["avgdl"],
             "include_full_lyrics": bool(args.include_full_lyrics),
-            "song_metadata_join_field": "metadata_key",
             "attribution_url": args.attribution_url,
             "license_note": (
                 "Lyrics-MIDI-Dataset is listed as CC-BY-NC-SA 4.0; original "
